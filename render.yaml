@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: upstate-command-analysis
+    runtime: docker
+    rootDir: analysis-backend
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
