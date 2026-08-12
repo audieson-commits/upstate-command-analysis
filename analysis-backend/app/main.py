@@ -3,6 +3,7 @@ from xml.sax.saxutils import escape
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 
@@ -13,6 +14,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+OPENCOMMAND_REPO_URL = "https://github.com/tomdoyo/open-command"
 
 
 class CommandRequest(BaseModel):
@@ -70,6 +73,93 @@ def command_svg(payload: CommandRequest, miss: float) -> str:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/open-command/status")
+def open_command_status() -> dict[str, object]:
+    return {
+        "status": "pipeline_source_connected",
+        "source": OPENCOMMAND_REPO_URL,
+        "automatic_video_scoring_ready": False,
+        "reason": "The public OpenCommand repository ships the inference scripts, but its data folder is currently empty and the YOLO detection outputs/models are not included.",
+        "available_now": [
+            "OpenCommand-style target/actual command scoring",
+            "Render backend command-miss API",
+            "Coach app video overlay for marking target and actual pitch locations",
+        ],
+        "needed_for_full_automatic_scoring": [
+            "Ball, glove, and strike-zone detections for each pitch video",
+            "Play-by-play/Statcast-style pitch metadata",
+            "Camera pose solve inputs",
+            "The OpenCommand data tree described in data/<year>/",
+        ],
+    }
+
+
+@app.get("/open-command", response_class=HTMLResponse)
+def open_command_lab() -> str:
+    return """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Upstate OpenCommand Lab</title>
+  <style>
+    :root{--up:#006747;--dark:#061d16;--gold:#c8a951;--ink:#101828;--muted:#667085;--card:#f2f4f3}
+    *{box-sizing:border-box} body{margin:0;background:var(--up);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:var(--ink)}
+    main{max-width:1080px;margin:0 auto;padding:18px}
+    .hero{background:linear-gradient(135deg,#050b09,#073f2d);color:white;border-radius:18px;padding:20px;margin-bottom:14px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+    h1{margin:0;font-size:30px} h2{margin:0 0 10px}.small{color:#d8e5df}.card{background:var(--card);border:1px solid #cfd8d2;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 8px 24px rgba(6,29,22,.18)}
+    .stage{position:relative;background:#050b09;border-radius:16px;overflow:hidden;aspect-ratio:16/9;border:1px solid #b7c5bd}
+    .zone{position:absolute;left:38%;top:21%;width:24%;height:50%;border:4px solid var(--gold);box-shadow:0 0 0 999px rgba(0,0,0,.12)}
+    .zone:before,.zone:after{content:"";position:absolute;background:rgba(246,196,69,.35)}
+    .zone:before{left:33%;top:0;bottom:0;width:1px;box-shadow:calc(33vw/12) 0 0 rgba(246,196,69,.35)}
+    .zone:after{left:0;right:0;top:33%;height:1px;box-shadow:0 calc(50vh/6) 0 rgba(246,196,69,.35)}
+    .circle{position:absolute;border-radius:50%;transform:translate(-50%,-50%);border:3px solid white}
+    .target{left:50%;top:42%;width:38px;height:38px;background:rgba(255,255,255,.22)}
+    .actual{left:56%;top:49%;width:46px;height:46px;background:rgba(0,103,71,.82);border-width:5px}
+    .caption{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:8px;flex-wrap:wrap}
+    .pill{background:rgba(5,11,9,.78);color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:8px 11px;font-weight:900;font-size:13px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    code{background:#e4ebe7;border-radius:8px;padding:2px 5px} a{color:#006747;font-weight:900}
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <h1>Upstate OpenCommand Lab</h1>
+    <p class="small">This Render backend is connected to the OpenCommand-style workflow. The coach app now marks target and actual pitch locations directly on video, then sends the command score to this service.</p>
+  </section>
+  <section class="card">
+    <h2>OpenCommand-style View</h2>
+    <div class="stage">
+      <div class="zone"></div>
+      <div class="circle target"></div>
+      <div class="circle actual"></div>
+      <div class="caption">
+        <span class="pill">Yellow box: strike zone</span>
+        <span class="pill">White: target</span>
+        <span class="pill">Green: actual pitch</span>
+        <span class="pill">Command miss: backend scored</span>
+      </div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>What Is Live Now</h2>
+    <div class="grid">
+      <div><strong>Video overlay</strong><p>Mark target and actual locations on top of your uploaded bullpen video.</p></div>
+      <div><strong>Render scoring</strong><p>The app posts coordinates to <code>/analyze/command</code> and gets command miss back.</p></div>
+      <div><strong>Player notes</strong><p>The score, video link, and command card still save back to the player's profile.</p></div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Why It Is Not Fully Automatic Yet</h2>
+    <p>The public OpenCommand repo contains the inference pipeline, but not a ready web app and not the large detection data/model outputs needed to automatically find glove, ball, strike zone, camera pose, target, and actual pitch location from any new video.</p>
+    <p>Source: <a href="https://github.com/tomdoyo/open-command" target="_blank" rel="noopener">tomdoyo/open-command</a></p>
+  </section>
+</main>
+</body>
+</html>"""
 
 
 @app.post("/analyze/command")
