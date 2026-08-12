@@ -2,10 +2,17 @@ from math import hypot
 from xml.sax.saxutils import escape
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 
 app = FastAPI(title="Upstate Command Analysis Backend")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class CommandRequest(BaseModel):
